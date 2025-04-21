@@ -3,7 +3,7 @@
 from ObstacleAvoidance.ObstacleDetectionNode import ObstacleDetectionNode
 
 def main():
-    ObstacleDetectionNode()
+    ObstacleDetectionNode() 
 
 if __name__=='__main__':
     main()
