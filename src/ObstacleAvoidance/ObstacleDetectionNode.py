@@ -35,10 +35,12 @@ DRONE_DIM = {
     'z': (-0.21, 0.434)    # Vertical axis
 }
 
-aspect_ratio = 480 / 640  # height/width
-vertical_fov = 2 * math.atan(math.tan(1.047/2) * aspect_ratio)
-max_range = 3.0
-max_vertical_view = max_range * math.cos(vertical_fov/2)+0.2
+# aspect_ratio = 480 / 640  # height/width
+# vertical_fov = 2 * math.atan(math.tan(1.047/2) * aspect_ratio)
+# max_range = 3.0
+# max_vertical_view = max_range * math.cos(vertical_fov/2)+0.2
+
+ground_plane_segment_cutoff=1.2
 
 class ObstacleDetectionNode:
     def __init__(self):
@@ -55,7 +57,7 @@ class ObstacleDetectionNode:
 
         self.marker_pub = rospy.Publisher('/auto_nav/visualization/bboxes', MarkerArray, queue_size=10)
 
-        self.voxel_map = Visualizer("Voxel Map")
+        self.voxel_map_vis = Visualizer("Voxel Map")
         self.pcd_vis = Visualizer("Point Cloud")
         self.drone_pose_tracker = DronePoseTracker()
 
@@ -73,7 +75,7 @@ class ObstacleDetectionNode:
             center=[0, 0, 0]
         )
 
-        self.timer = rospy.Timer(rospy.Duration(VIS_UPDATE_INTERVAL), self.update_voxel_map)
+        self.timer = rospy.Timer(rospy.Duration(VIS_UPDATE_INTERVAL), self.update_voxel_map_vis)
         self.timer = rospy.Timer(rospy.Duration(VIS_UPDATE_INTERVAL), self.update_pcd_visualisation)
         # self.timer = rospy.Timer(rospy.Duration(VIS_UPDATE_INTERVAL), self.update_drone_bbx)
 
@@ -84,22 +86,14 @@ class ObstacleDetectionNode:
     def depth_callback(self, data): 
         """Callback function that processes incoming depth images"""
         try:
-            # Convert ROS Image message to OpenCV image
-            # For depth images, use 32FC1 or 16UC1 depending on the encoding
             depth_image = self.bridge.imgmsg_to_cv2(data, desired_encoding="passthrough")
             
-            # Get image dimensions
             height, width = depth_image.shape
             
-            # Get depth value at the center of the image
             center_idx = (height // 2, width // 2)
             center_depth = depth_image[center_idx]
             
-            # Log the depth value at the center of the image
-            # rospy.loginfo("Depth at center: %.2f meters", center_depth)
             
-            # Process depth image as needed
-            # For example, you could find the minimum and maximum depths
             min_depth = np.nanmin(depth_image)
             max_depth = np.nanmax(depth_image)
             avg_depth = np.nanmean(depth_image) 
@@ -253,9 +247,9 @@ class ObstacleDetectionNode:
 
         position,orientation = self.drone_pose_tracker.get_latest_pose_from_odom_msg()
         drone_altitude = position[2]
-        print(f"drone_altitude, max_vertical_view ----> {drone_altitude} , {max_vertical_view}")
+        print(f"drone_altitude, max_vertical_view ----> {drone_altitude} , {ground_plane_segment_cutoff}")
 
-        if ((abs(angle_with_z) < angle_threshold) and (drone_altitude < max_vertical_view)): 
+        if ((abs(angle_with_z) < angle_threshold) and (drone_altitude < ground_plane_segment_cutoff)): 
             self.ground_plane = self.pcd_down.select_by_index(inliers)
             self.ground_plane.paint_uniform_color([0.0, 1.0, 0.0])  # Paint ground green
             self.obstacles = self.pcd_down.select_by_index(inliers, invert=True)
@@ -291,7 +285,8 @@ class ObstacleDetectionNode:
                 continue
                 
             # Create an oriented bounding box
-            obb = cluster_cloud.get_oriented_bounding_box()
+            # obb = cluster_cloud.get_oriented_bounding_box()
+            obb = self.get_xy_aligned_oriented_bounding_box(cluster_cloud)
             obb.color = [1.0, 0.0, 0.0]  # Red color for bounding boxes
             
             # Alternative: use axis-aligned bounding box
@@ -307,6 +302,51 @@ class ObstacleDetectionNode:
             print(f"Bounding Box : {bbx.get_max_bound()} , {bbx.get_min_bound()}")
 
         self.update_drone_bbx()
+
+    def get_xy_aligned_oriented_bounding_box(self,cluster_cloud,buffer=0.15):
+        points = np.asarray(cluster_cloud.points)
+        
+        xy_points = points[:, :2]
+        
+        centroid = np.mean(xy_points, axis=0)
+        cov_matrix = np.cov(xy_points - centroid, rowvar=False)
+        eigenvalues, eigenvectors = np.linalg.eigh(cov_matrix)
+        
+        # Sort eigenvectors by eigenvalues (descending)
+        idx = eigenvalues.argsort()[::-1]
+        xy_axes = eigenvectors[:, idx]
+        # Construct 3D rotation matrix:
+        # X-axis = first PCA component in XY, Y-axis = second, Z-axis = world-up [0,0,1]
+        rot_matrix = np.eye(3)
+        rot_matrix[:2, :2] = xy_axes  # Set X and Y axes from PCA
+        rot_matrix[2, 2] = 1.0       # Force Z-axis to remain world-up
+        
+        # Transform points into this new coordinate system
+        centered_points = points - np.mean(points, axis=0)
+        rotated_points = (rot_matrix.T @ centered_points.T).T
+        
+        # Compute min/max extents
+        min_vals = np.min(rotated_points, axis=0)
+        max_vals = np.max(rotated_points, axis=0)
+
+        min_vals[0] -= buffer  
+        min_vals[1] -= buffer  
+        min_vals[2] -= buffer  
+        
+        max_vals[0] += buffer  
+        max_vals[1] += buffer  
+        max_vals[2] += buffer  
+
+        center = (min_vals + max_vals) / 2
+        extent = max_vals - min_vals
+        
+        # Create oriented bounding box
+        obb = o3d.geometry.OrientedBoundingBox()
+        obb.center = np.mean(points, axis=0)  # Original center
+        obb.extent = extent
+        obb.R = rot_matrix  # Rotation matrix (Z-axis forced to world-up)
+        
+        return obb
 
     def update_drone_bbx(self):
         # Create a drone bounding box
@@ -365,8 +405,8 @@ class ObstacleDetectionNode:
         
         return map_frame_boxes 
 
-    def update_voxel_map(self, event):
-        self.voxel_map.update_visualisation([self.ground_plane,self.obstacles]+[bbx for bbx in self.bbxs]+[self.drone_bbx])
+    def update_voxel_map_vis(self, event):
+        self.voxel_map_vis.update_visualisation([self.ground_plane,self.obstacles]+[bbx for bbx in self.bbxs]+[self.drone_bbx])
 
     def update_pcd_visualisation(self, event):
         self.pcd_vis.update_visualisation([self.pcd]+[bbx for bbx in self.bbxs]+[self.drone_bbx])

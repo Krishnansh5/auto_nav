@@ -10,15 +10,15 @@
     <arg name="verbose" value="true"/>
   </include>
   
-  <!-- <node name="spawn_drone" 
+  <node name="spawn_drone" 
         pkg="gazebo_ros" 
         type="spawn_model" 
         output="screen" 
-        args="-urdf -param robot_description -model iris_with_depth_cam -x 0 -y 0 -z 0" /> -->
+        args="-urdf -param robot_description -model iris_with_depth_cam -x 0 -y 0 -z 0" />
   
-  <node name="spawn_drone" pkg="gazebo_ros" type="spawn_model"
+  <!-- <node name="spawn_drone" pkg="gazebo_ros" type="spawn_model"
         args="-sdf -file $(find auto_nav)/model/iris_with_depth_cam_urdf/model.sdf -model iris_with_depth_cam"
-        output="screen" />
+        output="screen" /> -->
    
   <node pkg="robot_state_publisher" type="robot_state_publisher" 
           name="robot_state_publisher">
@@ -26,16 +26,31 @@
   
   <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher"/>
 
-  <!-- <node pkg="robot_localization" type="ekf_localization_node" name="ekf_map">
-    <param name="map_frame" value="map"/>
-    <param name="odom_frame" value="odom"/>
-    <param name="base_link_frame" value="dummy_link"/>
-    <param name="world_frame" value="map"/>
-    <rosparam param="process_noise_covariance">[1e-5,0,0,0,0,0, ...]</rosparam>
-  </node> -->
-
   <!-- <node pkg="robot_localization" type="ekf_localization_node" name="ekf_localization">
     <rosparam command="load" file="$(find auto_nav)/config/ekf.yaml"/>
   </node> -->
+
+  <!-- <node name="gps_conv" pkg="gps_common" type="utm_odometry_node">
+  <remap from="odom" to="vo"/>
+  <remap from="fix" to="/gps/fix" />
+  <param name="rot_covariance" value="99999" />
+  <param name="frame_id" value="base_link" />
+  </node>
+
+   <node pkg="robot_pose_ekf" type="robot_pose_ekf" name="robot_pose_ekf">
+    <param name="output_frame" value="odom"/>
+    <param name="base_footprint_frame" value="base_link"/>
+    <param name="freq" value="30.0"/>
+    <param name="sensor_timeout" value="1.0"/>
+    <param name="odom_used" value="true"/>
+    <param name="imu_used" value="true"/>
+    <param name="vo_used" value="true"/>
+    <param name="gps_used" value="false"/>
+    <param name="debug" value="true"/>
+    <param name="self_diagnose" value="false"/>
+  </node> -->
+
+  <!-- <node pkg="auto_nav" type="dynamic_tf_broadcaster.py"
+          name="broadcaster_dynamic" /> -->
   
 </launch>

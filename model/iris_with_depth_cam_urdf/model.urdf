@@ -1,9 +1,9 @@
 <?xml version="1.0" ?>
 <robot name="iris_with_depth_cam">
 
-  <link name="world"/>
+  <!-- <link name="world"/> -->
  
-  <joint name="world_to_dummy" type="fixed">
+  <!-- <joint name="world_to_dummy" type="fixed">
     <parent link="world"/>
     <child link="dummy_link"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -12,7 +12,7 @@
   <joint name="dummy_to_base" type="fixed">
       <parent link="dummy_link"/>
       <child link="base_link"/>
-  </joint>
+  </joint> -->
   <joint name="iris/ground_truth/odometry_sensorgt_joint" type="fixed">
     <parent link="base_link"/>
     <child link="iris/ground_truth/odometry_sensorgt_link"/>
@@ -27,38 +27,47 @@
     <axis xyz="0 0 1"/>
     <limit lower="0.0" upper="0.0" effort="0.0" velocity="0.0"/>
   </joint>
+
+  <joint name="iris/gps_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="gps_link"/>
+    <origin xyz="0      0      0.19492" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="0.0" upper="0.0" effort="0.0" velocity="0.0"/>
+  </joint>
+
   <joint name="rotor_0_joint" type="revolute">
     <parent link="base_link"/>
     <child link="rotor_0"/>
     <origin xyz="0.13    -0.22     0.21792" rpy="0 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-1e+16" upper="1e+16" effort="0.0" velocity="0.0"/>
+    <limit effort="2000.0" lower="-1e+16" upper="1e+16" velocity="838.0"/>
   </joint>
   <joint name="rotor_1_joint" type="revolute">
     <parent link="base_link"/>
     <child link="rotor_1"/>
     <origin xyz="-0.13     0.2      0.21792" rpy="0 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-1e+16" upper="1e+16" effort="0.0" velocity="0.0"/>
+    <limit effort="2000.0" lower="-1e+16" upper="1e+16" velocity="838.0"/>
   </joint>
   <joint name="rotor_2_joint" type="revolute">
     <parent link="base_link"/>
     <child link="rotor_2"/>
     <origin xyz="0.13    0.22    0.21792" rpy="0 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-1e+16" upper="1e+16" effort="0.0" velocity="0.0"/>
+    <limit effort="2000.0" lower="-1e+16" upper="1e+16" velocity="838.0"/>
   </joint>
   <joint name="rotor_3_joint" type="revolute">
     <parent link="base_link"/>
     <child link="rotor_3"/>
     <origin xyz="-0.13    -0.2      0.21792" rpy="0 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-1e+16" upper="1e+16" effort="0.0" velocity="0.0"/>
+    <limit effort="2000.0" lower="-1e+16" upper="1e+16" velocity="838.0"/>
   </joint>
   <joint name="camera_joint" type="fixed">
     <parent link="base_link"/>
     <child link="cam_link"/> 
-    <origin xyz="0      0      0" rpy="0 0 0"/>
+    <origin xyz="0      0      0.125" rpy="0 0 0"/>
     <axis xyz="0 0 1"/>
     <limit lower="0.0" upper="0.0" effort="0.0" velocity="0.0"/>
   </joint>
@@ -67,7 +76,7 @@
     <child link="cam_link_optical"/>
     <origin xyz="0      0      0" rpy="-1.5707 0 -1.5707"/>
   </joint>
-  <link name="dummy_link" />
+  <!-- <link name="dummy_link" /> -->
   <link name="base_link">
     <inertial>
       <mass value="1.5"/>
@@ -139,6 +148,13 @@
   <link name="imu_link">
     <inertial>
       <mass value="0.15"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="0.00001" ixy="0" ixz="0" iyy="0.00002" iyz="0" izz="0.00002"/>
+    </inertial>
+  </link>
+  <link name="gps_link">
+    <inertial>
+      <mass value="0.01"/>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <inertia ixx="0.00001" ixy="0" ixz="0" iyy="0.00002" iyz="0" izz="0.00002"/>
     </inertial>
@@ -220,11 +236,6 @@
     </visual>
   </link>
   <link name="cam_link">
-    <inertial>
-      <mass value="0.01"/>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
-    </inertial>
     <visual name="cam_link">
       <geometry>
         <cylinder radius=".005" length=".018"/>
@@ -251,7 +262,7 @@
     </sensor>
   </link>
 
-  <gazebo reference="cam_link_optical">
+  <gazebo reference="cam_link">
     <sensor name="camera" type="depth" >
       <always_on>1</always_on>
       <update_rate>30</update_rate>
@@ -302,17 +313,37 @@
       <plugin name="gazebo_ros_imu" filename="libgazebo_ros_imu_sensor.so">
         <ros>
           <namespace>/</namespace>
-          <remapping>~/out:=imu/data</remapping>
+          <remapping>~/out:=/imu_data</remapping>
         </ros>
         <frameName>imu_link</frameName>
-        <topicName>imu/data</topicName>
+        <topicName>/imu_data</topicName>
+        <!-- <noise>
+          <type>gaussian</type>
+          <mean>0.0</mean>
+          <stddev>0.1</stddev>
+        </noise> -->
+        <gaussianNoise>0.01</gaussianNoise>
       </plugin>
     </sensor>
-    <!-- <sensor name="imu_sensor_ardupilot" type="imu">
-      <pose>0 0 0 3.141593 0 0</pose>
-      <always_on>1</always_on>
-      <update_rate>1000.0</update_rate>
-    </sensor> -->
+  </gazebo>
+
+  <gazebo>
+    <plugin name="gazebo_ros_gps" filename="libhector_gazebo_ros_gps.so">
+      <updateRate>4.0</updateRate>
+      <bodyName>gps_link</bodyName>
+      <frameId>gps_link</frameId>
+      <topicName>/gps/fix</topicName>
+      <velocityTopicName>/gps/fix_velocity</velocityTopicName>
+      <referenceLatitude>-30.06022459407145675</referenceLatitude>
+      <referenceLongitude>-51.173913575780311191</referenceLongitude>
+      <referenceHeading>90</referenceHeading>
+      <referenceAltitude>10</referenceAltitude>
+      <offset>0 0 0</offset>
+      <drift>0.001 0.001 0.001</drift>
+      <gaussianNoise>0.05 0.05 0.05</gaussianNoise>
+      <velocityDrift>0.001 0.001 0.001</velocityDrift>
+      <velocityGaussianNoise>0.5 0.5 0.5</velocityGaussianNoise>
+    </plugin>
   </gazebo>
 
   <gazebo>
@@ -320,13 +351,14 @@
     <plugin name="p3d_ground_truth" filename="libgazebo_ros_p3d.so">
       <ros>
         <namespace>/</namespace>
-        <remapping>~/out:=/iris/odom</remapping>
+        <remapping>~/out:=/odom</remapping>
       </ros>
       <frameName>world</frameName>
       <bodyName>base_link</bodyName>
-      <topicName>/iris/odom</topicName>
+      <topicName>/odom</topicName>
       <updateRate>100</updateRate>
       <publishTf>true</publishTf>
+      <gaussianNoise>0.01</gaussianNoise>
     </plugin>
 
     <plugin name="joint_state_publisher" filename="libgazebo_ros_joint_state_publisher.so">
@@ -467,80 +499,132 @@
     </plugin>
 
     <plugin name="arducopter_plugin" filename="libArduPilotPlugin.so">
-        <fdm_addr>127.0.0.1</fdm_addr>
-        <fdm_port_in>9002</fdm_port_in>
-        <fdm_port_out>9003</fdm_port_out>
-        <!--
-            Require by APM :
-            Only change model and gazebo from XYZ to XY-Z coordinates
+      <fdm_addr>127.0.0.1</fdm_addr>
+      <fdm_port_in>9002</fdm_port_in>
+      <fdm_port_out>9003</fdm_port_out>
+      <!--
+          Require by APM :
+          Only change model and gazebo from XYZ to XY-Z coordinates
+      -->
+      <modelXYZToAirplaneXForwardZDown>0 0 0 3.141593 0 0</modelXYZToAirplaneXForwardZDown>
+      <gazeboXYZToNED>0 0 0 3.141593 0 0</gazeboXYZToNED>
+      <imuName>imu_sensor</imuName>
+      <connectionTimeoutMaxCount>5</connectionTimeoutMaxCount>
+
+      <motorNumber>4</motorNumber>
+
+      <motor1>rotor_0_joint</motor1>
+      <motor2>rotor_1_joint</motor2>
+      <motor3>rotor_2_joint</motor3>
+      <motor4>rotor_3_joint</motor4>
+
+      <control channel="0">
+      <!--
+          incoming control command [0, 1]
+          so offset it by 0 to get [0, 1]
+          and divide max target by 1.
+          offset = 0
+          multiplier = 838 max rpm / 1 = 838
         -->
-        <modelXYZToAirplaneXForwardZDown>0 0 0 3.141593 0 0</modelXYZToAirplaneXForwardZDown>
-        <gazeboXYZToNED>0 0 0 3.141593 0 0</gazeboXYZToNED>
-        <imuName>imu_sensor</imuName>
-        <connectionTimeoutMaxCount>5</connectionTimeoutMaxCount>
-        <control channel="0">
-        <!--
-            incoming control command [0, 1]
-            so offset it by 0 to get [0, 1]
-            and divide max target by 1.
-            offset = 0
-            multiplier = 838 max rpm / 1 = 838
-          -->
-          <type>VELOCITY</type>
-          <offset>0</offset>
-          <p_gain>0.20</p_gain>
-          <i_gain>0</i_gain>
-          <d_gain>0</d_gain>
-          <i_max>0</i_max>
-          <i_min>0</i_min>
-          <cmd_max>2.5</cmd_max>
-          <cmd_min>-2.5</cmd_min>
-          <jointName>rotor_0_joint</jointName>
-          <multiplier>838</multiplier>
-          <controlVelocitySlowdownSim>1</controlVelocitySlowdownSim>
-        </control>
-        <control channel="1">
-          <type>VELOCITY</type>
-          <offset>0</offset>
-          <p_gain>0.20</p_gain>
-          <i_gain>0</i_gain>
-          <d_gain>0</d_gain>
-          <i_max>0</i_max>
-          <i_min>0</i_min>
-          <cmd_max>2.5</cmd_max>
-          <cmd_min>-2.5</cmd_min>
-          <jointName>rotor_1_joint</jointName>
-          <multiplier>838</multiplier>
-          <controlVelocitySlowdownSim>1</controlVelocitySlowdownSim>
-        </control>
-        <control channel="2">
-          <type>VELOCITY</type>
-          <offset>0</offset>
-          <p_gain>0.20</p_gain>
-          <i_gain>0</i_gain>
-          <d_gain>0</d_gain>
-          <i_max>0</i_max>
-          <i_min>0</i_min>
-          <cmd_max>2.5</cmd_max>
-          <cmd_min>-2.5</cmd_min>
-          <jointName>rotor_2_joint</jointName>
-          <multiplier>-838</multiplier>
-          <controlVelocitySlowdownSim>1</controlVelocitySlowdownSim>
-        </control>
-        <control channel="3">
-          <type>VELOCITY</type>
-          <offset>0</offset>
-          <p_gain>0.20</p_gain>
-          <i_gain>0</i_gain>
-          <d_gain>0</d_gain>
-          <i_max>0</i_max>
-          <i_min>0</i_min>
-          <cmd_max>2.5</cmd_max>
-          <cmd_min>-2.5</cmd_min>
-          <jointName>rotor_3_joint</jointName>
-          <multiplier>-838</multiplier>
-          <controlVelocitySlowdownSim>1</controlVelocitySlowdownSim>
-        </control>
-      </plugin>
+        <type>VELOCITY</type>
+        <offset>0</offset>
+        <p_gain>0.20</p_gain>
+        <i_gain>0</i_gain>
+        <d_gain>0</d_gain>
+        <i_max>0</i_max>
+        <i_min>0</i_min>
+        <cmd_max>2.5</cmd_max>
+        <cmd_min>-2.5</cmd_min>
+        <jointName>rotor_0_joint</jointName>
+        <multiplier>838</multiplier>
+        <controlVelocitySlowdownSim>1</controlVelocitySlowdownSim>
+      </control>
+      <control channel="1">
+        <type>VELOCITY</type>
+        <offset>0</offset>
+        <p_gain>0.20</p_gain>
+        <i_gain>0</i_gain>
+        <d_gain>0</d_gain>
+        <i_max>0</i_max>
+        <i_min>0</i_min>
+        <cmd_max>2.5</cmd_max>
+        <cmd_min>-2.5</cmd_min>
+        <jointName>rotor_1_joint</jointName>
+        <multiplier>838</multiplier>
+        <controlVelocitySlowdownSim>1</controlVelocitySlowdownSim>
+      </control>
+      <control channel="2">
+        <type>VELOCITY</type>
+        <offset>0</offset>
+        <p_gain>0.20</p_gain>
+        <i_gain>0</i_gain>
+        <d_gain>0</d_gain>
+        <i_max>0</i_max>
+        <i_min>0</i_min>
+        <cmd_max>2.5</cmd_max>
+        <cmd_min>-2.5</cmd_min>
+        <jointName>rotor_2_joint</jointName>
+        <multiplier>-838</multiplier>
+        <controlVelocitySlowdownSim>1</controlVelocitySlowdownSim>
+      </control>
+      <control channel="3">
+        <type>VELOCITY</type>
+        <offset>0</offset>
+        <p_gain>0.20</p_gain>
+        <i_gain>0</i_gain>
+        <d_gain>0</d_gain>
+        <i_max>0</i_max>
+        <i_min>0</i_min>
+        <cmd_max>2.5</cmd_max>
+        <cmd_min>-2.5</cmd_min>
+        <jointName>rotor_3_joint</jointName>
+        <multiplier>-838</multiplier>
+        <controlVelocitySlowdownSim>1</controlVelocitySlowdownSim>
+      </control>
+    </plugin>
   </gazebo>
+
+  <transmission name="rotor_0_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="rotor_0_joint">
+      <hardwareInterface>EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="rotor_0_motor">
+      <hardwareInterface>EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="rotor_1_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="rotor_1_joint">
+      <hardwareInterface>EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="rotor_1_motor">
+      <hardwareInterface>EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="rotor_2_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="rotor_2_joint">
+      <hardwareInterface>EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="rotor_2_motor">
+      <hardwareInterface>EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="rotor_3_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="rotor_3_joint">
+      <hardwareInterface>EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="rotor_3_motor">
+      <hardwareInterface>EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
 </robot>
